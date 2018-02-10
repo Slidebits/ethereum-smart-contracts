@@ -1,0 +1,21 @@
+{
+  "name": "ethereum-smart-contracts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "truffle test",
+    "coverage": "solidity-coverage"
+  },
+  "author": "Olajide Ogundipe Jr",
+  "license": "ISC",
+  "devDependencies": {
+    "solidity-coverage": "^0.4.9"
+  },
+  "dependencies": {
+    "solidity-sha3": "^0.4.1"
+  }
+}
