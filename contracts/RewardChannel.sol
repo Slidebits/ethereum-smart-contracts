@@ -51,7 +51,7 @@ contract RewardChannel {
       _;
     }
 
-    modifier onlyBy(address _account) { require(msg.sender == _account); _; }
+    modifier onlyBy(address _account) {require(msg.sender == _account); _;}
     modifier onlyIfSolvent() {
         uint openSlots = totalChannelSpots - numberOfParticipants;
         uint amountDue = openSlots * rewardAmount;
@@ -67,7 +67,7 @@ contract RewardChannel {
     }
 
     function RewardChannel(uint szaboCostPerToken, uint capacityMax, address addressOfTokenUsedAsReward, address faucetAddress) public {
-        price =  szaboCostPerToken * 1 szabo;
+        price = szaboCostPerToken * 1 szabo;
         rewardAmount = price / 100;
         totalCapacity = capacityMax;
         faucet = faucetAddress;
@@ -77,7 +77,7 @@ contract RewardChannel {
     function() payable public {}
 
     // channel id 
-    // sha3((address channelFunder, string model, uint capacity))
+    // keccak256((address channelFunder, string model, uint capacity))
 
     function createChannel(bytes32 _channelId, address _channelFunder, uint _capacity) payable
       onlyBy(faucet)
@@ -106,12 +106,22 @@ contract RewardChannel {
         Recipient storage _recipient = _channel.recipients[_user];
         require(!_recipient.rewarded && _channel.headcount < _channel.capacity);
         _channel.headcount += 1;
-        numberOfParticipants +=1;
+        numberOfParticipants += 1;
         _recipient.rewarded = true;
         _channel.deposit -= rewardAmount;
         uint tokenRewardAmount = 1 ether * rewardAmount/price;
         tokenReward.transfer(_user, tokenRewardAmount);
         ParticipantRewarded(_channelId, _user, tokenRewardAmount);
+    }
+
+    function verifyHash(bytes32 _hash, uint8 _v, bytes32 _r, bytes32 _s) 
+      public
+      
+      returns (address) 
+    {
+    //   bytes32 channelData = keccak256(_hash, _h);
+      address signer = ecrecover(_hash, _v, _r, _s);
+      return signer;
     }
 
     function increaseCapacity(uint _increaseAmount)
@@ -128,7 +138,7 @@ contract RewardChannel {
         owner.transfer(this.balance);
     }
 
-    function destroy() onlyBy(owner) public{
+    function destroy() onlyBy(owner) public {
       selfdestruct(this);
     }
 }

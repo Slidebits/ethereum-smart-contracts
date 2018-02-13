@@ -1,4 +1,5 @@
 const soliditySha3 = require('solidity-sha3').default;
+const ethUtil = require('ethereumjs-util');
 
 const RewardChannel = artifacts.require('./RewardChannel');
 const SlidebitsToken = artifacts.require('./SlidebitsToken');
@@ -85,7 +86,7 @@ contract('RewardChannel', function(accounts) {
     assert.equal(totalCapacity, 400, 'Total capacity should be capacityMax');
   });
 
-  it('should create a channel', async () => {
+  xit('should create a channel', async () => {
     const capacity = 10;
     const model = 'food';
     const oneEth = web3.toWei(1, 'ether');
@@ -177,6 +178,27 @@ contract('RewardChannel', function(accounts) {
     const wasParticipantRewarded = txResult.logs.some(rewardEventLogged);
 
     assert.equal(wasParticipantRewarded, true, 'reward function unsuccessful');
+  });
+
+  xit('should verifyHash', async () => {
+    const ownerKey =
+      'c87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3';
+    const capacity = 10;
+    const model = 'dog';
+    const oneEth = web3.toWei(1, 'ether');
+    const channelId = soliditySha3(channelFunder, model, capacity);
+
+    const hash = Buffer.from(channelId.substr(2, 64), 'hex');
+    const privateKey = Buffer.from(ownerKey, 'hex');
+
+    const signature = ethUtil.ecsign(hash, privateKey);
+    const { v, r, s } = signature;
+    const recoverAddress = ethUtil.ecrecover(hash, v, r, s);
+    const signer = await rewardChannel.verifyHash.call(hash, v, r, s, {
+      from: user
+    });
+
+    assert(signer, contractOwner, 'Error with signing');
   });
 
   it('should increaseCapacity', async () => {

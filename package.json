@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "truffle test",
-    "coverage": "solidity-coverage"
+    "coverage": "solidity-coverage",
+    "clean": "truffle migrate --reset --compile-all"
   },
   "author": "Olajide Ogundipe Jr",
   "license": "ISC",
@@ -16,6 +17,7 @@
     "solidity-coverage": "^0.4.9"
   },
   "dependencies": {
+    "ethereumjs-util": "^5.1.4",
     "solidity-sha3": "^0.4.1"
   }
 }
