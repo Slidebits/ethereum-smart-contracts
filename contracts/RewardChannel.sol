@@ -116,7 +116,7 @@ contract RewardChannel {
 
     function verifyHash(bytes32 _hash, uint8 _v, bytes32 _r, bytes32 _s) 
       public
-      
+      pure
       returns (address) 
     {
     //   bytes32 channelData = keccak256(_hash, _h);

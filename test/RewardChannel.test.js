@@ -180,7 +180,7 @@ contract('RewardChannel', function(accounts) {
     assert.equal(wasParticipantRewarded, true, 'reward function unsuccessful');
   });
 
-  xit('should verifyHash', async () => {
+  it('should verifyHash', async () => {
     const ownerKey =
       'c87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3';
     const capacity = 10;
@@ -193,8 +193,11 @@ contract('RewardChannel', function(accounts) {
 
     const signature = ethUtil.ecsign(hash, privateKey);
     const { v, r, s } = signature;
-    const recoverAddress = ethUtil.ecrecover(hash, v, r, s);
-    const signer = await rewardChannel.verifyHash.call(hash, v, r, s, {
+    const _r = ethUtil.bufferToHex(r);
+    const _s = ethUtil.bufferToHex(s);
+    // const recoverAddress = ethUtil.ecrecover(hash, v, r, s);
+
+    const signer = await rewardChannel.verifyHash(channelId, v, _r, _s, {
       from: user
     });
 
