@@ -23,7 +23,6 @@ contract RewardChannel {
     struct Channel {
       address channelFunder;
       bool started;
-      uint deposit;
       uint capacity;
       uint headcount;
       mapping (address => Recipient) recipients;
@@ -85,33 +84,55 @@ contract RewardChannel {
       onlyIfCovered(msg.value, _capacity)
       public
     {
-      Channel storage channel = channels[_channelId];
-      require(!channel.started);
-      channel.started = true;
-      channel.deposit = msg.value;
-      channel.channelFunder = _channelFunder;
-      channel.capacity = _capacity;
-      totalChannelSpots += _capacity;
-      channels[_channelId] = channel;
+        Channel storage channel = channels[_channelId];
+        require(!channel.started);
+        channel.started = true;
+        channel.channelFunder = _channelFunder;
+        channel.capacity = _capacity;
+        totalChannelSpots += _capacity;
+        channels[_channelId] = channel;
       //event new channel created
-      ChannelCreated(_channelId, _channelFunder, _capacity);
+        ChannelCreated(_channelId, _channelFunder, _capacity);
     }
 
-    function reward(address _user, bytes32 _channelId)
-      onlyBy(faucet)
+    // function reward(address _user, bytes32 _channelId)
+    //   onlyBy(faucet)
+    //   onlyIfSolvent()
+    //   public
+    // {
+    //     Channel storage _channel = channels[_channelId];
+    //     Recipient storage _recipient = _channel.recipients[_user];
+    //     require(!_recipient.rewarded && _channel.headcount < _channel.capacity);
+    //     _channel.headcount += 1;
+    //     numberOfParticipants += 1;
+    //     _recipient.rewarded = true;
+    //     _channel.deposit -= rewardAmount;
+    //     uint tokenRewardAmount = 1 ether * rewardAmount/price;
+    //     tokenReward.transfer(_user, tokenRewardAmount);
+    //     ParticipantRewarded(_channelId, _user, tokenRewardAmount);
+    // }
+
+    function reward(bytes32 h, uint8 _v, bytes32 _r, bytes32 _s, bytes32 _channelId, uint amount)
       onlyIfSolvent()
       public
     {
+        address signer = ecrecover(h, _v, _r, _s);
+
+        require(signer == faucet);
+
+
+        bytes32 proof = keccak256(faucet, _channelId, amount);
+        require(proof == h);
+
         Channel storage _channel = channels[_channelId];
-        Recipient storage _recipient = _channel.recipients[_user];
+        Recipient storage _recipient = _channel.recipients[msg.sender];
         require(!_recipient.rewarded && _channel.headcount < _channel.capacity);
         _channel.headcount += 1;
         numberOfParticipants += 1;
         _recipient.rewarded = true;
-        _channel.deposit -= rewardAmount;
-        uint tokenRewardAmount = 1 ether * rewardAmount/price;
-        tokenReward.transfer(_user, tokenRewardAmount);
-        ParticipantRewarded(_channelId, _user, tokenRewardAmount);
+        uint tokenRewardAmount = 1 ether * amount;
+        tokenReward.transfer(msg.sender, tokenRewardAmount);
+        ParticipantRewarded(_channelId, msg.sender, tokenRewardAmount);
     }
 
     function verifyHash(bytes32 _hash, uint8 _v, bytes32 _r, bytes32 _s) 
