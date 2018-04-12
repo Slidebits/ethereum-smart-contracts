@@ -17,14 +17,10 @@ contract('RewardChannel', function(accounts) {
   it('Deploys all contracts', async () => {
     token = await SlidebitsToken.deployed();
 
-    const szaboCostPerToken = 1000;
-    const capacityMax = 400;
     const addressOfTokenUsedAsReward = token.address;
     const faucetAddress = faucet;
 
     rewardChannel = await RewardChannel.new(
-      szaboCostPerToken,
-      capacityMax,
       addressOfTokenUsedAsReward,
       faucetAddress
     );
@@ -33,36 +29,21 @@ contract('RewardChannel', function(accounts) {
   it('should have the correct values in the constructor', async () => {
     token = await SlidebitsToken.deployed();
 
-    const szaboCostPerToken = 1000;
-    const capacityMax = 400;
     const addressOfTokenUsedAsReward = token.address;
     const faucetAddress = faucet;
 
     rewardChannel = await RewardChannel.new(
-      szaboCostPerToken,
-      capacityMax,
       addressOfTokenUsedAsReward,
       faucetAddress
     );
     const owner = await rewardChannel.owner();
-    const price = await rewardChannel.price();
+    const contractFaucet = await rewardChannel.faucet();
     const tokenReward = await rewardChannel.tokenReward();
-    const rewardAmount = await rewardChannel.rewardAmount();
-    const totalCapacity = await rewardChannel.totalCapacity();
-
-    const expectedReward = oneEth * rewardAmount / price;
-    const tokenDecimalPlaces = 10 ** 18;
 
     assert.equal(
       owner,
       contractOwner,
       'owner should be creator of the contract'
-    );
-
-    assert.equal(
-      price,
-      web3.toWei(1000, 'szabo'),
-      'Price should be 1000 szabos'
     );
 
     assert.equal(
@@ -72,57 +53,30 @@ contract('RewardChannel', function(accounts) {
     );
 
     assert.equal(
-      Number(rewardAmount.toString()),
-      web3.toWei(10, 'szabo'),
-      'Reward Amount should equal expected reward'
+      faucet,
+      contractFaucet,
+      'Faucet should have the same address as faucetAddress in the contructor'
     );
-
-    assert.equal(
-      expectedReward,
-      Number(0.01 * tokenDecimalPlaces),
-      'Unexpected token reward amount'
-    );
-
-    assert.equal(totalCapacity, 400, 'Total capacity should be capacityMax');
   });
 
-  xit('should create a channel', async () => {
+  it('should create a channel', async () => {
     const capacity = 10;
     const model = 'food';
     const oneEth = web3.toWei(1, 'ether');
     const channelId = soliditySha3(channelFunder, model, capacity);
 
-    token.transfer(rewardChannel.address, 1000000, { from: contractOwner });
-    const data = rewardChannel.contract.createChannel.getData(
-      channelId,
-      channelFunder,
-      capacity
-    );
-    const gasEstimate = web3.eth.estimateGas({
-      to: rewardChannel.address,
-      data: data
+    await token.transfer(rewardChannel.address, 1000000, {
+      from: contractOwner
     });
 
-    console.log('estimate', gasEstimate);
-    // rewardChannel.createChannel(
-    //     channelId,
-    //     channelFunder,
-    //     capacity,
-    //     {
-    //       from: faucet,
-    //       value: oneEth
-    //     }
-    //   );
-
-    // const txResult = await rewardChannel.createChannel(
-    //   channelId,
-    //   channelFunder,
-    //   capacity,
-    //   {
-    //     from: faucet,
-    //     value: oneEth
-    //   }
-    // );
+    const txResult = await rewardChannel.createChannel(
+      channelId,
+      channelFunder,
+      capacity,
+      {
+        from: faucet
+      }
+    );
 
     const channelEventLogged = log => {
       const expectedArgs = args =>
@@ -145,19 +99,29 @@ contract('RewardChannel', function(accounts) {
   });
 
   xit('should reward', async () => {
-    const rewardAmount = await rewardChannel.rewardAmount();
-    const price = await rewardChannel.price();
+    const ownerKey =
+      'c87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3';
+
+    const amount = 1;
 
     const capacity = 10;
     const model = 'food';
     const oneEth = web3.toWei(1, 'ether');
     const channelId = soliditySha3(channelFunder, model, capacity);
+    const h = soliditySha3(faucet, channelId, amount);
+    const proofBuffer = Buffer.from(h.substr(2, 64), 'hex');
+    const privateKey = Buffer.from(ownerKey, 'hex');
+
+    const signature = ethUtil.ecsign(proofBuffer, privateKey);
+    const { v, r, s } = signature;
+    const _r = ethUtil.bufferToHex(r);
+    const _s = ethUtil.bufferToHex(s);
 
     const expectedReward = oneEth * rewardAmount / price;
 
     token.transfer(rewardChannel.address, 1000000, { from: contractOwner });
 
-    await rewardChannel.createChannel(channelId, channelFunder, capacity, {
+    await rewardChannel.createChannel(h, v, _r, _s, channelId, amount, {
       from: faucet,
       value: oneEth
     });
@@ -180,43 +144,43 @@ contract('RewardChannel', function(accounts) {
     assert.equal(wasParticipantRewarded, true, 'reward function unsuccessful');
   });
 
-  it('should verifyHash', async () => {
-    const ownerKey =
-      'c87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3';
-    const capacity = 10;
-    const model = 'dog';
-    const oneEth = web3.toWei(1, 'ether');
-    const channelId = soliditySha3(channelFunder, model, capacity);
+  // it('should verifyHash', async () => {
+  //   const ownerKey =
+  //     'c87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3';
+  //   const capacity = 10;
+  //   const model = 'dog';
+  //   const oneEth = web3.toWei(1, 'ether');
+  //   const channelId = soliditySha3(channelFunder, model, capacity);
 
-    const hash = Buffer.from(channelId.substr(2, 64), 'hex');
-    const privateKey = Buffer.from(ownerKey, 'hex');
+  //   const hash = Buffer.from(channelId.substr(2, 64), 'hex');
+  //   const privateKey = Buffer.from(ownerKey, 'hex');
 
-    const signature = ethUtil.ecsign(hash, privateKey);
-    const { v, r, s } = signature;
-    const _r = ethUtil.bufferToHex(r);
-    const _s = ethUtil.bufferToHex(s);
-    // const recoverAddress = ethUtil.ecrecover(hash, v, r, s);
+  //   const signature = ethUtil.ecsign(hash, privateKey);
+  //   const { v, r, s } = signature;
+  //   const _r = ethUtil.bufferToHex(r);
+  //   const _s = ethUtil.bufferToHex(s);
+  //   // const recoverAddress = ethUtil.ecrecover(hash, v, r, s);
 
-    const signer = await rewardChannel.verifyHash(channelId, v, _r, _s, {
-      from: user
-    });
+  //   const signer = await rewardChannel.verifyHash(channelId, v, _r, _s, {
+  //     from: user
+  //   });
 
-    assert(signer, contractOwner, 'Error with signing');
-  });
+  //   assert(signer, contractOwner, 'Error with signing');
+  // });
 
-  it('should increaseCapacity', async () => {
-    const initialCapacity = await rewardChannel.totalCapacity();
-    const txResult = await rewardChannel.increaseCapacity(100, {
-      from: contractOwner
-    });
-    const increasedCapacity = await rewardChannel.totalCapacity();
+  // it('should increaseCapacity', async () => {
+  //   const initialCapacity = await rewardChannel.totalCapacity();
+  //   const txResult = await rewardChannel.increaseCapacity(100, {
+  //     from: contractOwner
+  //   });
+  //   const increasedCapacity = await rewardChannel.totalCapacity();
 
-    assert.equal(
-      Number(increasedCapacity.toString()),
-      Number(initialCapacity.toString()) + 100,
-      'increaseCapacity function unsuccessful'
-    );
-  });
+  //   assert.equal(
+  //     Number(increasedCapacity.toString()),
+  //     Number(initialCapacity.toString()) + 100,
+  //     'increaseCapacity function unsuccessful'
+  //   );
+  // });
 
   it('should withdraw balance for creator', async () => {
     rewardChannel.send(web3.toWei(1, 'ether'));
