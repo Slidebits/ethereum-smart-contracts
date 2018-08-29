@@ -7,20 +7,19 @@ interface token {
     function balanceOf(address _owner) external constant returns (uint balance);
 }
 
-contract RewardChannel {
+contract RewardDemoChannel {
     address public owner = msg.sender;
     address public faucet;
 
     struct Recipient {
         bool rewarded;
-        uint latestEntryTime;
     }
 
     struct Channel {
+        address channelFunder;
         bool started;
         uint capacity;
         uint headcount;
-        uint timeIntervalInMinutes;
         mapping (address => Recipient) recipients;
     }
 
@@ -28,12 +27,12 @@ contract RewardChannel {
 
     token public tokenReward;
 
-    event ChannelCreated(bytes32 indexed channelId, uint256 capacity);
+    event ChannelCreated(bytes32 indexed channelId, address indexed channelFunder, uint256 capacity);
     event ParticipantRewarded(bytes32 indexed channelId, address indexed user, uint256 value);
 
     modifier onlyBy(address _account) {require(msg.sender == _account); _;}
 
-    function RewardChannel( address addressOfTokenUsedAsReward, address faucetAddress) public {
+    function RewardDemoChannel( address addressOfTokenUsedAsReward, address faucetAddress) public {
         faucet = faucetAddress;
         tokenReward = token(addressOfTokenUsedAsReward);
     }
@@ -43,17 +42,17 @@ contract RewardChannel {
     // channel id 
     // keccak256((address channelFunder, string model, uint capacity))
 
-    function createChannel(bytes32 _channelId, uint _capacity, uint _timeIntervalInMinutes) payable
+    function createChannel(bytes32 _channelId, address _channelFunder, uint _capacity) payable
       onlyBy(faucet)
       public
     {
         Channel storage channel = channels[_channelId];
         require(!channel.started);
         channel.started = true;
-        channel.timeIntervalInMinutes = _timeIntervalInMinutes * 1 minutes;
+        channel.channelFunder = _channelFunder;
         channel.capacity = _capacity;
         channels[_channelId] = channel;
-        emit ChannelCreated(_channelId, _capacity);
+        emit ChannelCreated(_channelId, _channelFunder, _capacity);
     }
 
     function reward(address _user, bytes32 _channelId)
@@ -62,12 +61,11 @@ contract RewardChannel {
     {
         Channel storage _channel = channels[_channelId];
         Recipient storage _recipient = _channel.recipients[_user];
-        uint currentTimeWindow = now - _recipient.latestEntryTime;
-        require(currentTimeWindow > _channel.timeIntervalInMinutes);
-        require(_channel.headcount < _channel.capacity);
+
+        // For demo purposes this line is commented out
+        // require(!_recipient.rewarded && _channel.headcount < _channel.capacity);
         _channel.headcount += 1;
         _recipient.rewarded = true;
-        _recipient.latestEntryTime = now;
         uint tokenRewardAmount = 1 ether;
         tokenReward.transfer(_user, tokenRewardAmount);
         emit ParticipantRewarded(_channelId, _user, tokenRewardAmount);

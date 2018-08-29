@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "ethereumjs-util": "^5.1.4",
+    "solc": "^0.4.24",
     "solidity-sha3": "^0.4.1"
   }
 }
