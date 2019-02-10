@@ -1,9 +1,11 @@
+// Check if the balanceOf Airdrop Wallet works as an interface
+
 pragma solidity ^0.4.21;
 
 // Airdrop Wallet and gas management service
 // sends tokens/ether on behalf of users
 
-interface token {
+interface wallet {
     function transfer(address _to, uint256 _value) external;
     function balanceOf(address _owner) external constant returns (uint balance);
 }
@@ -14,7 +16,7 @@ contract AirdropWallet {
 
     mapping (address => uint256) public balanceOf;
 
-    token public tokenReward;
+    wallet public airdropWallet;
     uint256 public valueInWei;
     
     // keeps track of rewards given
@@ -22,9 +24,9 @@ contract AirdropWallet {
 
     modifier onlyBy(address _account) {require(msg.sender == _account); _;}
 
-    function HotAirdropWallet( address addressOfTokenUsedAsReward, address faucetAddress, uint256 amountInWei) public {
+    function HotAirdropWallet( address addressOfAirdropWallet, address faucetAddress, uint256 amountInWei) public {
         faucet = faucetAddress;
-        tokenReward = token(addressOfTokenUsedAsReward);
+        airdropWallet = wallet(addressOfAirdropWallet);
         // valueInEth = amountInSzabos * 1 szabo;
         valueInWei = amountInWei;
     }
@@ -43,21 +45,16 @@ contract AirdropWallet {
         _to.transfer(amount * valueInWei);
     }
 
-    function sendToken(address _from, address _to, uint amount)
-      onlyBy(faucet)
-      public
-    {
-        require(balanceOf[_from] >= amount);
-        balanceOf[_from] -= amount;
-        tokenReward.transfer(_to, amount);
-    }
+    function checkBalance(uint256 weiValue)
+      public returns (uint balance)
+            onlyBy(faucet)
 
-    function setValueInWei(uint256 weiValue)
-      onlyBy(faucet)
-      public
     {
         // valueInEth = amountInSzabos * 1 szabo;
-        valueInWei = weiValue;
+        
+        balance = airdropWallet.balanceOf(msg.sender);
+
+        return balance;
 
     }
 

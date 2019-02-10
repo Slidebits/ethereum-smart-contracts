@@ -17,8 +17,10 @@
     "solidity-coverage": "^0.4.9"
   },
   "dependencies": {
+    "chainlink": "github:smartcontractkit/chainlink",
     "ethereumjs-util": "^5.1.4",
     "solc": "^0.4.24",
-    "solidity-sha3": "^0.4.1"
+    "solidity-sha3": "^0.4.1",
+    "truffle-flattener": "^1.2.9"
   }
 }

@@ -1,9 +1,9 @@
-pragma solidity >=0.4.22 <0.6.0;
+pragma solidity ^0.4.19;
 
 contract owned {
     address public owner;
 
-    constructor() public {
+    function owned() public {
         owner = msg.sender;
     }
 
@@ -17,14 +17,14 @@ contract owned {
     }
 }
 
-interface tokenRecipient { function receiveApproval(address _from, uint256 _value, address _token, bytes calldata _extraData) external; }
+interface tokenRecipient { function receiveApproval(address _from, uint256 _value, address _token, bytes _extraData) public; }
 
 contract TokenERC20 {
     // Public variables of the token
-    string public name = "Slidebits Token";
-    string public symbol = "SBT";
-    uint8 public decimals = 18;
+    string public name;
+    string public symbol;
     // 18 decimals is the strongly suggested default, avoid changing it
+    uint8 public decimals = 18;
     uint256 initialSupply = 100000000;
     uint256 public totalSupply = initialSupply * 10 ** uint256(decimals);
 
@@ -34,9 +34,6 @@ contract TokenERC20 {
 
     // This generates a public event on the blockchain that will notify clients
     event Transfer(address indexed from, address indexed to, uint256 value);
-    
-    // This generates a public event on the blockchain that will notify clients
-    event Approval(address indexed _owner, address indexed _spender, uint256 _value);
 
     // This notifies clients about the amount burnt
     event Burn(address indexed from, uint256 value);
@@ -46,8 +43,14 @@ contract TokenERC20 {
      *
      * Initializes contract with initial supply tokens to the creator of the contract
      */
-    constructor() public {
-        balanceOf[msg.sender] = totalSupply;                    // Give the creator all initial tokens
+    function TokenERC20(
+        string tokenName,
+        string tokenSymbol
+    ) public {
+          // Update total supply with the decimal amount
+        balanceOf[msg.sender] = totalSupply;                // Give the creator all initial tokens
+        name = tokenName;                                   // Set the name for display purposes
+        symbol = tokenSymbol;                               // Set the symbol for display purposes
     }
 
     /**
@@ -55,7 +58,7 @@ contract TokenERC20 {
      */
     function _transfer(address _from, address _to, uint _value) internal {
         // Prevent transfer to 0x0 address. Use burn() instead
-        require(_to != address(0x0));
+        require(_to != 0x0);
         // Check if the sender has enough
         require(balanceOf[_from] >= _value);
         // Check for overflows
@@ -66,7 +69,7 @@ contract TokenERC20 {
         balanceOf[_from] -= _value;
         // Add the same to the recipient
         balanceOf[_to] += _value;
-        emit Transfer(_from, _to, _value);
+        Transfer(_from, _to, _value);
         // Asserts are used to use static analysis to find bugs in your code. They should never fail
         assert(balanceOf[_from] + balanceOf[_to] == previousBalances);
     }
@@ -79,9 +82,8 @@ contract TokenERC20 {
      * @param _to The address of the recipient
      * @param _value the amount to send
      */
-    function transfer(address _to, uint256 _value) public returns (bool success) {
+    function transfer(address _to, uint256 _value) public {
         _transfer(msg.sender, _to, _value);
-        return true;
     }
 
     /**
@@ -111,7 +113,6 @@ contract TokenERC20 {
     function approve(address _spender, uint256 _value) public
         returns (bool success) {
         allowance[msg.sender][_spender] = _value;
-        emit Approval(msg.sender, _spender, _value);
         return true;
     }
 
@@ -124,12 +125,12 @@ contract TokenERC20 {
      * @param _value the max amount they can spend
      * @param _extraData some extra information to send to the approved contract
      */
-    function approveAndCall(address _spender, uint256 _value, bytes memory _extraData)
+    function approveAndCall(address _spender, uint256 _value, bytes _extraData)
         public
         returns (bool success) {
         tokenRecipient spender = tokenRecipient(_spender);
         if (approve(_spender, _value)) {
-            spender.receiveApproval(msg.sender, _value, address(this), _extraData);
+            spender.receiveApproval(msg.sender, _value, this, _extraData);
             return true;
         }
     }
@@ -145,7 +146,7 @@ contract TokenERC20 {
         require(balanceOf[msg.sender] >= _value);   // Check if the sender has enough
         balanceOf[msg.sender] -= _value;            // Subtract from the sender
         totalSupply -= _value;                      // Updates totalSupply
-        emit Burn(msg.sender, _value);
+        Burn(msg.sender, _value);
         return true;
     }
 
@@ -163,7 +164,7 @@ contract TokenERC20 {
         balanceOf[_from] -= _value;                         // Subtract from the targeted balance
         allowance[_from][msg.sender] -= _value;             // Subtract from the sender's allowance
         totalSupply -= _value;                              // Update totalSupply
-        emit Burn(_from, _value);
+        Burn(_from, _value);
         return true;
     }
 }
@@ -174,24 +175,30 @@ contract TokenERC20 {
 
 contract SlidebitsToken is owned, TokenERC20 {
 
+    uint256 public sellPrice;
+    uint256 public buyPrice;
+
     mapping (address => bool) public frozenAccount;
 
     /* This generates a public event on the blockchain that will notify clients */
     event FrozenFunds(address target, bool frozen);
 
     /* Initializes contract with initial supply tokens to the creator of the contract */
-    constructor() TokenERC20() public {}
+    function SlidebitsToken(
+        string tokenName,
+        string tokenSymbol
+    ) TokenERC20(tokenName, tokenSymbol) public {}
 
     /* Internal transfer, only can be called by this contract */
     function _transfer(address _from, address _to, uint _value) internal {
-        require (_to != address(0x0));                          // Prevent transfer to 0x0 address. Use burn() instead
-        require (balanceOf[_from] >= _value);                   // Check if the sender has enough
-        require (balanceOf[_to] + _value >= balanceOf[_to]);    // Check for overflows
-        require(!frozenAccount[_from]);                         // Check if sender is frozen
-        require(!frozenAccount[_to]);                           // Check if recipient is frozen
-        balanceOf[_from] -= _value;                             // Subtract from the sender
-        balanceOf[_to] += _value;                               // Add the same to the recipient
-        emit Transfer(_from, _to, _value);
+        require (_to != 0x0);                               // Prevent transfer to 0x0 address. Use burn() instead
+        require (balanceOf[_from] >= _value);               // Check if the sender has enough
+        require (balanceOf[_to] + _value > balanceOf[_to]); // Check for overflows
+        require(!frozenAccount[_from]);                     // Check if sender is frozen
+        require(!frozenAccount[_to]);                       // Check if recipient is frozen
+        balanceOf[_from] -= _value;                         // Subtract from the sender
+        balanceOf[_to] += _value;                           // Add the same to the recipient
+        Transfer(_from, _to, _value);
     }
 
     /// @notice Create `mintedAmount` tokens and send it to `target`
@@ -200,8 +207,8 @@ contract SlidebitsToken is owned, TokenERC20 {
     function mintToken(address target, uint256 mintedAmount) onlyOwner public {
         balanceOf[target] += mintedAmount;
         totalSupply += mintedAmount;
-        emit Transfer(address(0), address(this), mintedAmount);
-        emit Transfer(address(this), target, mintedAmount);
+        Transfer(0, this, mintedAmount);
+        Transfer(this, target, mintedAmount);
     }
 
     /// @notice `freeze? Prevent | Allow` `target` from sending & receiving tokens
@@ -209,7 +216,28 @@ contract SlidebitsToken is owned, TokenERC20 {
     /// @param freeze either to freeze it or not
     function freezeAccount(address target, bool freeze) onlyOwner public {
         frozenAccount[target] = freeze;
-        emit FrozenFunds(target, freeze);
+        FrozenFunds(target, freeze);
+    }
+
+    /// @notice Allow users to buy tokens for `newBuyPrice` eth and sell tokens for `newSellPrice` eth
+    /// @param newSellPrice Price the users can sell to the contract
+    /// @param newBuyPrice Price users can buy from the contract
+    function setPrices(uint256 newSellPrice, uint256 newBuyPrice) onlyOwner public {
+        sellPrice = newSellPrice;
+        buyPrice = newBuyPrice;
+    }
+
+    /// @notice Buy tokens from contract by sending ether
+    function buy() payable public {
+        uint amount = msg.value / buyPrice;               // calculates the amount
+        _transfer(this, msg.sender, amount);              // makes the transfers
+    }
+
+    /// @notice Sell `amount` tokens to contract
+    /// @param amount amount of tokens to be sold
+    function sell(uint256 amount) public {
+        require(this.balance >= amount * sellPrice);      // checks if the contract has enough ether to buy
+        _transfer(msg.sender, this, amount);              // makes the transfers
+        msg.sender.transfer(amount * sellPrice);          // sends ether to the seller. It's important to do this last to avoid recursion attacks
     }
 }
-
